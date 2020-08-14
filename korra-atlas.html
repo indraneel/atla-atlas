@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Korra Atlas</title>
+    <meta name="description" content="Korra Atlas" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no"/>
+
+    <script src="https://unpkg.com/d3@5.9.1/dist/d3.min.js"></script>
+    <script src="https://unpkg.com/intersection-observer"></script>
+    <script src="https://unpkg.com/scrollama"></script>
+    <!-- <script src='https://unpkg.com/@turf/turf/turf.min.js'></script> -->
+
+    <!-- Load Leaflet CSS and JS from CDN-->
+    <!-- <script>L_NO_TOUCH = true;</script> -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="./korra-atlas.css" />
+  
+    <!-- Load jQuery  -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script> -->
+    <!-- <script src="./atla-book-1.js"></script> -->
+    <script src="./stickyfill.min.js"></script>
+    <!-- <script src="./L.Polyline.SnakeAnim.js"></script> -->
+</head>
+<body>
+    <section id="scrolly">
+        <div class="scroll_map">
+            <div id="map"></div>
+        </div>
+
+        <article>
+            <div class="intro-step">
+                <div class="intro-step-text">
+                    <div class="intro-logo">The Avatar Atlas</div>
+                    <div class="intro-book-title">Book One</div>
+                    <div class="intro-step-scroll-indicator">⬇️</div>
+                </div>
+            </div>
+        </article>
+    </section>
+
+    <script>
+        var ATLA_BOOK_1_STOPS = [
+            { id: 1, name: "southern water tribe", coordinates: [0.44219531715407406, 2.0709228515625004] },
+            { id: 2, name: "southern air temple", coordinates: [1.142502403706165, 1.9555664062500002] },
+            { id: 3, name: "kyoshi island", coordinates: [1.631249305788186, 2.7685546875000004] },
+            { id: 4, name: "omashu", coordinates: [2.4656692707025543, 2.9498291015625004] },
+            { id: 5, name: "haru / mining village", coordinates: [2.5095731690398533, 2.471923828125] },
+            { id: 6, name: "hei bai's forest", coordinates: [2.7784514150468644, 2.39501953125] },
+            { id: 7, name: "roku's temple / crescent island ", coordinates: [2.89640962848465, 2.0393371582031254] },
+            { id: 8, name: "stop to learn water bending", coordinates: [3.0746950723696944, 2.509002685546875] },
+            { id: 9, name: "merchant pier / port town", coordinates: [2.9965273286407097, 2.4581909179687504] },
+            { id: 10, name: "gaipan / jet's forest", coordinates: [2.874464829653609, 2.9333496093750004] },
+            { id: 11, name: "great divide", coordinates:    [3.1789097955033068, 2.867431640625] },
+            { id: 12, name: "harbor town", coordinates: [3.228271011252635, 2.3922729492187504] },
+            { id: 13, name: "ruins of taku", coordinates: [3.3215022897186035, 2.4636840820312504] },
+            { id: 14, name: "pohai stronghold ", coordinates: [3.3146473455184013, 2.3387145996093754] },
+            { id: 15, name: "makapu", coordinates: [3.4010161387921563, 2.2329711914062504] },
+            { id: 16, name: "the abbey", coordinates: [3.5463175009986707, 1.9940185546875002] },
+            { id: 17, name: "fire nation colony", coordinates: [3.573730320126554, 2.4169921875000004] },
+            { id: 18, name: "northern air temple", coordinates: [4.309438149956732, 3.0363464355468754] },
+            { id: 19, name: "northern water tribe", coordinates: [4.576424935853651, 2.4060058593750004] },
+        ];
+
+
+    </script>
+    
+    <script type="text/javascript">
+        var map = L.map('map', {
+          center: [2.5, 2.5],
+          zoom: 8,
+          minZoom: 8,
+          maxZoom: 10,
+          scrollWheelZoom: false,
+          dragging: false,
+          doubleClickZoom: false,
+          zoomControl: false,
+        });
+
+        var mapMarker = L.icon({
+            iconUrl: './atla-map-marker.png',
+            iconSize:     [32, 32], // size of the icon
+            // iconAnchor:   [22, 94], // point of the icon which will correspond to marker's location
+            // popupAnchor:  [-3, -76] // point from which the popup should open relative to the iconAnchor
+        });
+
+        map.on('click', function(e) {
+            console.log(e.latlng)
+        });
+
+
+        function getColor(p) {
+            switch (p.nation_name) {
+                case "Air":                    
+                    return "#d8dfcc";
+                case "Water":                    
+                    return "#a1b8c2";
+                case "Fire":                    
+                    return "#bc7d61";
+                case "Earth":        
+                case "United Republic":            
+                    return "#cac67c";
+                // case "United Republic":                    
+                    // return "#b6aa9d";
+                default:
+                    return "white";
+            }
+        }
+
+        function style(feature) {
+            return {
+                fillColor: getColor(feature.properties),
+                fillOpacity: 1,
+                weight: 2.5,
+                color: 'grey'
+            }
+        }
+
+        // var imageUrl = './avatar_ocean.jpg',
+        //     imageBounds = [[-5, -5], [5, 5]];
+        // L.imageOverlay(imageUrl, imageBounds).addTo(map);
+
+        var southWest = L.latLng([0, 0]);
+        var northEast = L.latLng([5, 5]);
+        map.setMaxBounds(new L.LatLngBounds(southWest, northEast));
+
+        var latlngs = [
+            new L.LatLng(0.44219531715407406, 2.0709228515625004),
+            new L.LatLng(1.142502403706165, 1.9555664062500002)
+        ];
+        let xhr = new XMLHttpRequest();
+        xhr.open('GET', './korra-nations.geojson');
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.responseType = 'json';
+        xhr.onload = function() {
+            if (xhr.status !== 200) return
+            L.geoJSON(xhr.response, {style: style}).addTo(map);
+            // var path = L.polyline(latlngs,
+            //     {snakingSpeed: 200}
+            // );
+            // L.marker([0.44219531715407406, 2.0709228515625004], {icon: mapMarker}).addTo(map);
+            // L.marker([1.142502403706165, 1.9555664062500002], {icon: mapMarker}).addTo(map);
+            // map.fitBounds(L.latLngBounds(latlngs));
+            // path.addTo(map).snakeIn();
+
+            // path.on('snakestart snake snakeend', function(ev){
+            //     console.log(ev.type);
+            // });
+            createMarkers();
+            markers = scrolly.selectAll(".marker");
+            init();
+
+        };
+        xhr.send();
+
+        var destinationMarkers = [];
+        var path = null;
+        // var journeyPath = null;
+        // var totalLength = 0;
+        // var currentDashOffset = 0;
+        // const draw_steps = ATLA_BOOK_1_STOPS.length*5;
+        // var length_step = 0;
+
+        function createMarkers() {
+            var coords = [];
+            ATLA_BOOK_1_STOPS.forEach(function(dest, index) {
+                coords.push(dest.coordinates);
+                var marker = L.marker(dest.coordinates, {
+                    icon: mapMarker,
+                    className: "marker marker-"+index,
+                });
+                destinationMarkers = destinationMarkers.concat(marker);
+                marker.addTo(map);
+            });
+            path = L.polyline(coords,
+                {
+                    className: 'journey-path', 
+                    color: 'rgb(206,115,66)',
+                    weight: 10
+                }
+            ).addTo(map);
+            // Plot through the trip time.
+            // journeyPath = d3.select(".journey-path");
+            // console.log("journeyPath", journeyPath);
+            // totalLength = journeyPath.node().getTotalLength();  // getTotalLength is an SVG method on "path" elements
+            // journeyPath
+            //     .attr("stroke-dasharray", totalLength + " " + totalLength)
+            //     .attr("stroke-dashoffset", totalLength);
+            
+            // length_step = totalLength / draw_steps;
+            // currentDashOffset = totalLength;
+            // path.addTo(map);
+        }
+
+        function addMarker(index) {
+            var dest = ATLA_BOOK_1_STOPS[index];
+            var destMarker = destinationMarkers[index];
+            // console.log(dest);
+            destMarker.addTo(map);
+        }
+
+        function removeMarker(index) {
+            var dest = ATLA_BOOK_1_STOPS[index];
+            var destMarker = destinationMarkers[index];
+            // console.log(dest);
+            destMarker.remove(map);
+        }
+
+        // scrolling 
+        var main = d3.select("body");
+        var scrolly = main.select("#scrolly");
+        var mapDiv = scrolly.select(".scroll_map");
+        
+        ATLA_BOOK_1_STOPS.forEach(function(stop, index) {
+            var stepDiv = document.createElement("div");
+            stepDiv.className = "step";
+            stepDiv.setAttribute("data-step", index);
+            var titleDiv = document.createElement("p");
+            titleDiv.className = "step-title";
+            titleDiv.innerText = stop.name;
+            stepDiv.append(titleDiv);
+            document.getElementsByTagName("article")[0].append(stepDiv);
+            
+        });
+        var markers = null;
+        var article = scrolly.select("article");
+        var step = article.selectAll(".step");
+        var scroller = scrollama();
+        function handleResize() {
+            // 1. update height of step elements
+            var stepH = Math.floor(window.innerHeight * 0.75);
+            step.style("height", stepH + "px");
+
+            var mapDivHeight = window.innerHeight; // / 2;
+            var mapDivMarginTop = (window.innerHeight - mapDivHeight) / 2;
+
+            mapDiv
+            .style("height", mapDivHeight + "px")
+            .style("top", mapDivMarginTop + "px");
+
+            // 3. tell scrollama to update new element dimensions
+            scroller.resize();
+        }
+
+        var currentStep = 0;
+        var currentPathFull = null;
+        var currentPathChunks = null;
+        function handleStepEnter(response) {
+            currentStep = response.index;
+            // console.log(response);
+            // currentPathFull = turf.lineString([
+            //         ATLA_BOOK_1_STOPS[currentStep].coordinates,
+            //         ATLA_BOOK_1_STOPS[currentStep+1].coordinates
+            //     ]);
+            // currentPathChunks = turf.lineChunk(
+            //     currentPathFull,
+            //     turf.length(currentPathFull, {units: 'miles'})/4,
+            //     {units: 'miles'}
+            // );
+            // console.log(currentPathChunks);
+            // response = { element, direction, index }
+            if (response.direction === "down") {
+                currentProgress = 0;
+                // addMarker(response.index);
+            } else {
+                currentProgress = 1;
+                // removeMarker(response.index);
+                // map.remove(path);
+            }
+            // add color to current step only
+            
+            // console.log("currentStep", currentStep);
+            map.flyTo(ATLA_BOOK_1_STOPS[currentStep].coordinates, 10);
+            // console.log("markers", markers);
+            markers.classed("is-active-marker", function(d, i) {
+                return i === response.index;
+            });
+            step.classed("is-active", function(d, i) {
+                return i === response.index;
+            });
+
+            // // update graphic based on step
+            // mapDiv.select("p").text(response.index + 1);
+        }
+
+        var currentProgress = 0;
+        function handleStepProgress(response) {
+            // if (response.progress > currentProgress) {
+            //     // console.log(response, currentProgress);
+            //     // scroll down
+            //     if (currentDashOffset > 0) {
+            //         currentDashOffset = currentDashOffset - length_step;
+            //         journeyPath.transition().duration(0);
+            //         journeyPath.transition().duration(1000).attr("stroke-dashoffset", currentDashOffset)
+            //     }
+            //     currentProgress = response.progress;
+            // } else {
+            //     // scroll up
+            //     if (currentDashOffset < totalLength) {
+            //         currentDashOffset = currentDashOffset + length_step;
+            //         journeyPath.transition().duration(0);
+            //         journeyPath.transition().duration(1000).attr("stroke-dashoffset", currentDashOffset);
+            //     }
+
+            //     // currentProgress = response.progress;
+            // }
+            
+            // var prog = Math.round(response.progress * 100);
+        }
+
+        function handleStepExit(response) {
+            if (response.index === 0 && response.direction === "up") {
+                map.flyTo([2.5, 2.5], 8);
+            }
+        }  
+
+        function setupStickyfill() {
+            d3.selectAll(".sticky").each(function() {
+                Stickyfill.add(this);
+            });
+        }
+
+        function init() {
+            setupStickyfill();
+            handleResize();
+            scroller.setup({
+                container: "#scrolly",
+                graphic: ".scroll_map",
+                text: "article",
+                step: "article .step",
+                // offset:.3,
+                order: false,
+                progress: true,
+                // debug:true,
+            }).onStepEnter(handleStepEnter)
+            .onStepExit(handleStepExit)
+            .onStepProgress(handleStepProgress);
+            window.addEventListener("resize", handleResize);
+        }
+        
+
+      </script>
+</body>
+</html>
